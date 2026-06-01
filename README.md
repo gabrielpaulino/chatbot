@@ -1,97 +1,170 @@
-# Chatbot WhatsApp
+# Chatbot WhatsApp — Lista de presença FUT
 
-Bot de exemplo para WhatsApp usando a **API oficial da Meta (WhatsApp Cloud API)** com Node.js e Express.
+Bot para **grupo de WhatsApp** que gerencia a lista de presença do futebol semanal (toda **quinta-feira**). Os jogadores confirmam ou cancelam presença por palavras-chave; avulsos entram na seção **Suplentes**.
 
-## Pré-requisitos
+## Tecnologias
 
-- [Node.js](https://nodejs.org/) 18 ou superior
-- Conta no [Meta for Developers](https://developers.facebook.com/)
-- Número de telefone para testes (pode ser o número de teste gratuito da Meta)
+| Camada | Tecnologia |
+|--------|------------|
+| Runtime | Node.js 18+ |
+| WhatsApp | [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) (WhatsApp Web, **não** é a API oficial da Meta) |
+| Navegador | Puppeteer + Chromium |
+| Sessão | `LocalAuth` (pasta `.wwebjs_auth`) |
+| Dados | JSON (`lista-presenca.json`) |
+| Config | `dotenv` (`.env`) |
 
-## Passo 1 — Criar app na Meta
+> **Nota:** Este projeto **não** usa WhatsApp Cloud API. Funciona como um “aparelho conectado” via QR Code, igual ao WhatsApp Web no navegador.
 
-1. Acesse [developers.facebook.com](https://developers.facebook.com/) e crie um app do tipo **Business**.
-2. Adicione o produto **WhatsApp**.
-3. Em **WhatsApp > API Setup**, anote:
-   - **Phone number ID**
-   - **Temporary access token** (depois gere um token permanente)
-4. Em **WhatsApp > Configuration**, adicione seu número pessoal em **To** para poder enviar mensagens de teste.
+## Funcionalidades
 
-## Passo 2 — Configurar o projeto
+- Respostas **apenas no grupo** configurado em `GRUPO_ID`
+- Lista com **15 titulares**, **4 suplentes** e goleiros fixos (França, Reginaldo)
+- Reset automático da lista a cada **nova semana** (referência: próxima quinta-feira)
+- **Avulsos** sempre na seção Suplentes
+- Inclusão de terceiros: `avulso Nome` (ex.: Erik adiciona Vitor)
+- Remoção de terceiros: `fora Nome`
+
+## Comandos no grupo
+
+| Comando | Ação |
+|---------|------|
+| `dentro` | Confirma presença na lista de **titulares** (vagas 1–15) |
+| `avulso` | Você entra como **avulso** em Suplentes |
+| `avulso Vitor` | Adiciona **Vitor** como avulso em Suplentes |
+| `fora` | Remove sua própria inscrição |
+| `fora Vitor` | Remove **Vitor** da lista |
+| `lista` | Exibe a lista atual |
+| `idgrupo` | Mostra o ID do grupo (para configurar o `.env`) |
+
+Sinônimos aceitos: `confirmar`, `sim`, `vou` (dentro); `cancelar`, `sair` (fora); `suplente` (avulso).
+
+## Estrutura do projeto
+
+```
+chatbot/
+├── chatbot.js           # Conexão WhatsApp, eventos, comandos
+├── lista-presenca.js    # Regras da lista (dentro, fora, avulso)
+├── lista-presenca.json  # Dados persistidos (gerado em runtime)
+├── .env                 # GRUPO_ID (não versionar)
+├── .env.example
+├── ecosystem.config.cjs # PM2 (VPS)
+├── Dockerfile           # Deploy com Docker
+├── docker-compose.yml
+├── reset-session.ps1    # Limpa sessão (Windows)
+├── DEPLOY.md            # Guia detalhado de deploy na nuvem
+└── package.json
+```
+
+## Instalação local
+
+### Pré-requisitos
+
+- [Node.js](https://nodejs.org/) 20 ou 22 (LTS recomendado; evite v24 se houver instabilidade)
+- WhatsApp no celular para escanear o QR Code
+
+### Passos
 
 ```bash
 npm install
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` com seus valores:
+Edite o `.env`:
 
 ```env
-WHATSAPP_TOKEN=seu_token
-PHONE_NUMBER_ID=seu_phone_number_id
-VERIFY_TOKEN=qualquer_string_secreta
-PORT=3000
+GRUPO_ID=120363411702597017@g.us
+DEBUG=false
 ```
 
-## Passo 3 — Expor o servidor local (ngrok)
-
-A Meta precisa alcançar seu webhook pela internet. Em desenvolvimento, use [ngrok](https://ngrok.com/):
+Inicie o bot:
 
 ```bash
-npm run dev
+npm start
+# ou: node chatbot.js
 ```
 
-Em outro terminal:
+1. Escaneie o **QR Code** exibido no terminal (WhatsApp → Aparelhos conectados → Conectar aparelho).
+2. Aguarde `✅ Tudo certo! WhatsApp conectado.`
+3. Se ainda não souber o ID do grupo, envie `idgrupo` no grupo e copie o valor para `GRUPO_ID`.
+4. Reinicie o bot após alterar o `.env`.
 
-```bash
-ngrok http 3000
-```
+### Scripts npm
 
-Copie a URL HTTPS gerada (ex.: `https://abc123.ngrok-free.app`).
+| Script | Descrição |
+|--------|-----------|
+| `npm start` | Inicia o bot |
+| `npm run reset` | Remove sessão e cache (Windows) |
+| `npm run docker:up` | Sobe com Docker |
+| `npm run docker:logs` | Logs do container |
 
-## Passo 4 — Configurar o webhook na Meta
-
-1. Vá em **WhatsApp > Configuration** no painel da Meta.
-2. Em **Webhook**, clique em **Edit**.
-3. Preencha:
-   - **Callback URL:** `https://SUA-URL-NGROK/webhook`
-   - **Verify token:** o mesmo valor de `VERIFY_TOKEN` no seu `.env`
-4. Clique em **Verify and save**.
-5. Inscreva-se no campo **messages**.
-
-## Passo 5 — Testar
-
-Envie uma mensagem do seu WhatsApp para o número de teste da Meta. O bot deve responder com o menu.
-
-Comandos disponíveis:
-
-| Mensagem | Resposta |
-|----------|----------|
-| `oi` / `olá` | Saudação |
-| `menu` | Lista de opções |
-| `horario` | Horário de atendimento |
-| `ajuda` | Encaminha para atendente |
-| `info` | Informações sobre o bot |
-
-## Estrutura do projeto
+## Exemplo de resposta
 
 ```
-src/
-├── index.js      # Servidor Express
-├── webhook.js    # Recebe e valida mensagens da Meta
-├── whatsapp.js   # Envia mensagens via API
-└── chatbot.js    # Lógica de respostas (edite aqui)
+✅ Erik adicionou Vitor como avulso (suplente 1)!
+
+LISTA FUT 04/06
+
+1- Júlio
+2-
+...
+GOLEIROS
+
+1 - França
+2 - Reginaldo
+
+Suplentes
+
+1- Vitor (avulso)
+2-
+...
 ```
 
-## Próximos passos
+## Configuração do grupo
 
-- Integrar IA (OpenAI, Claude, etc.) em `chatbot.js`
-- Conectar a um banco de dados para histórico de conversas
-- Adicionar botões e listas interativas (mensagens template)
-- Migrar de ngrok para um servidor em produção (Railway, Render, AWS, etc.)
+O bot **ignora** mensagens fora do grupo definido em `GRUPO_ID`.
 
-## Links úteis
+Para obter o ID:
 
-- [Documentação WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)
-- [Enviar mensagens](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages)
-- [Webhooks](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks)
+1. Com o bot rodando, envie `idgrupo` no grupo desejado.
+2. Copie o ID retornado para o `.env`.
+3. Reinicie: `node chatbot.js`.
+
+## Problemas comuns
+
+| Problema | Solução |
+|----------|---------|
+| QR não aparece | Sessão já salva — veja se conectou; ou `npm run reset` |
+| Vários QR Codes | Normal até escanear; use o mais recente |
+| `browser is already running` | Feche outra instância do bot; `npm run reset` |
+| Bot não responde no grupo | Confira `GRUPO_ID` no `.env` e reinicie |
+| Timeout / lentidão | Feche Chrome extra; use Node LTS; em VPS use 2 GB+ RAM |
+
+## Deploy 24/7 (nuvem)
+
+Para rodar sem depender do PC, use um **VPS** com PM2 ou Docker.
+
+- Guia completo: **[DEPLOY.md](./DEPLOY.md)**
+- Plano sugerido: Hetzner **CX23** (~€ 4/mês, 4 GB RAM)
+- PM2: `ecosystem.config.cjs`
+- Docker: `docker compose up -d --build`
+
+## Variáveis de ambiente
+
+| Variável | Obrigatório | Descrição |
+|----------|-------------|-----------|
+| `GRUPO_ID` | Sim | ID do grupo (`...@g.us`) |
+| `DEBUG` | Não | `true` para logs extras no terminal |
+| `SESSION_PATH` | Não | Pasta da sessão (padrão: `./.wwebjs_auth`) |
+| `DATA_PATH` | Não | Pasta do `lista-presenca.json` |
+| `PUPPETEER_EXECUTABLE_PATH` | Não | Caminho do Chromium (Linux/Docker) |
+
+## Avisos
+
+- Uso de **whatsapp-web.js** não é API oficial; há risco de desconexão ou restrição se violar termos do WhatsApp.
+- Mantenha **uma única instância** do bot por número/sessão.
+- Não commite `.env`, `.wwebjs_auth` nem `lista-presenca.json` com dados sensíveis.
+
+## Links
+
+- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js)
+- [WhatsApp Cloud API (alternativa oficial)](https://developers.facebook.com/docs/whatsapp/cloud-api)
