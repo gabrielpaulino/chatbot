@@ -1,0 +1,33 @@
+{
+  "semanaReferencia": "2026-06-04",
+  "jogadores": [
+    "Impressão e Xerox",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "suplentes": [
+    "",
+    "",
+    "",
+    ""
+  ],
+  "inscricoes": {
+    "29017470156922@lid": {
+      "tipo": "jogador",
+      "slot": 0,
+      "nome": "Impressão e Xerox"
+    }
+  }
+}

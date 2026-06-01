@@ -1,0 +1,20 @@
+services:
+  chatbot:
+    build: .
+    container_name: whatsapp-chatbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SESSION_PATH: /app/data/.wwebjs_auth
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      DATA_PATH: /app/data
+    volumes:
+      - chatbot-data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+volumes:
+  chatbot-data:

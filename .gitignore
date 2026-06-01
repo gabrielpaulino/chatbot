@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.log
+lista-presenca.json
+.wwebjs_auth/
+.wwebjs_cache/
