@@ -58,7 +58,14 @@ const client = new Client({
     protocolTimeout: 180000,
     timeout: 120000,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: puppeteerArgs,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-zygote',
+      '--single-process'
+    ]
   },
 });
 
