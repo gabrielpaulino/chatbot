@@ -51,7 +51,7 @@ if (process.env.PUPPETEER_EXECUTABLE_PATH) {
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: '/usr/bin/chromium', // ajuste conforme o which
+    executablePath: '/usr/bin/chromium-browser', // ajuste conforme o which
     headless: true,
     args: [
       '--no-sandbox',
