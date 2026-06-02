@@ -49,24 +49,17 @@ if (process.env.PUPPETEER_EXECUTABLE_PATH) {
 }
 
 const client = new Client({
-  authStrategy: new LocalAuth({
-    dataPath: process.env.SESSION_PATH || "./.wwebjs_auth",
-  }),
-  authTimeoutMs: 120000,
+  authStrategy: new LocalAuth(),
   puppeteer: {
+    executablePath: '/usr/bin/chromium', // ajuste conforme o which
     headless: true,
-    protocolTimeout: 180000,
-    timeout: 120000,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-zygote',
-      '--single-process'
+      '--disable-gpu'
     ]
-  },
+  }
 });
 
 let contadorQr = 0;
