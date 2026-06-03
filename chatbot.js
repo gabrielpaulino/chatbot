@@ -13,6 +13,9 @@ const {
   formatarLista,
   carregarLista,
   garantirSemanaAtual,
+  pareceListaFut,
+  importarListaDoTexto,
+  sincronizarUltimaListaDoGrupo,
 } = require("./lista-presenca");
 
 // =====================================
@@ -48,10 +51,14 @@ if (process.env.PUPPETEER_EXECUTABLE_PATH) {
   puppeteerArgs.push("--disable-software-rasterizer");
 }
 
+const isLinux = process.platform === 'linux';
+
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: '/usr/bin/chromium-browser', // ajuste conforme o which
+    ...(isLinux && {
+      executablePath: '/usr/bin/chromium-browser'
+    }),
     headless: true,
     args: [
       '--no-sandbox',
@@ -79,7 +86,9 @@ client.on("qr", (qr) => {
 client.on("ready", async () => {
   garantirSemanaAtual(carregarLista());
   console.log("✅ Tudo certo! WhatsApp conectado.");
-  console.log("📋 Comandos: dentro | avulso | avulso Nome | Nome avulso | fora | fora Nome | Nome fora | lista");
+  console.log(
+    "📋 Comandos: dentro | avulso | fora | lista | importar | (colar LISTA FUT)"
+  );
 
   if (!GRUPO_ID) {
     console.warn("\n⚠️  GRUPO_ID não definido no arquivo .env");
@@ -246,6 +255,9 @@ function analisarMensagem(texto) {
   if (/^(idgrupo)$/i.test(palavra) || lower === "id do grupo") {
     return { comando: "idgrupo", nomeAlvo: null };
   }
+  if (/^(importar|sync|sincronizar)$/i.test(palavra)) {
+    return { comando: "importar", nomeAlvo: null };
+  }
 
   return null;
 }
@@ -270,16 +282,31 @@ function ehGrupoPermitido(msg) {
 // =====================================
 client.on("message", (msg) => {
   processarNaFila(async () => {
-    if (msg.fromMe) return;
     if (msg.type !== "chat") return;
 
     const texto = msg.body || "";
+    const ehGrupo = msg.from.endsWith("@g.us");
+    const noGrupoAtivo = ehGrupo && GRUPO_ID && ehGrupoPermitido(msg);
+
+    // Lista colada no grupo (qualquer pessoa, inclusive o próprio bot)
+    if (noGrupoAtivo && pareceListaFut(texto) && !analisarMensagem(texto)) {
+      const msgId = msg.id?._serialized || msg.id;
+      const dadosAtual = carregarLista();
+      if (dadosAtual.ultimaListaMsgId !== msgId) {
+        const resultado = importarListaDoTexto(texto, msgId);
+        console.log(
+          `📋 Lista importada (${msg.fromMe ? "bot" : "membro"}): ${resultado.mensagem}`
+        );
+      }
+      return;
+    }
+
+    if (msg.fromMe) return;
+
     const parsed = analisarMensagem(texto);
     if (!parsed) return;
 
     const { comando, nomeAlvo } = parsed;
-
-    const ehGrupo = msg.from.endsWith("@g.us");
 
     if (DEBUG) {
       console.log("[debug]", {
@@ -335,9 +362,24 @@ client.on("message", (msg) => {
 
     const nome = await obterNomeUsuario(msg, userId);
 
+    // Antes de alterar: usa a última LISTA FUT enviada no grupo
+    await sincronizarUltimaListaDoGrupo(client, GRUPO_ID);
+
     let resposta;
 
-    if (comando === "dentro") {
+    if (comando === "importar") {
+      const sync = await sincronizarUltimaListaDoGrupo(client, GRUPO_ID, 100);
+      if (sync.importado && sync.resultado) {
+        resposta = `${sync.resultado.mensagem}\n\n${sync.resultado.listaFormatada}`;
+      } else if (sync.resultado && !sync.importado) {
+        const dados = garantirSemanaAtual(carregarLista());
+        resposta = `ℹ️ Lista do grupo já estava sincronizada.\n\n${formatarLista(dados)}`;
+      } else {
+        resposta =
+          "⚠️ Nenhuma LISTA FUT encontrada nas últimas mensagens do grupo.\n" +
+          "Cole a lista no chat ou envie no formato:\nLISTA FUT 04/06\n1- Nome\n...";
+      }
+    } else if (comando === "dentro") {
       const resultado = confirmarPresenca(userId, nome);
       resposta = `${resultado.mensagem}\n\n${resultado.listaFormatada}`;
     } else if (comando === "avulso") {

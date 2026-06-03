@@ -1,10 +1,10 @@
 {
   "semanaReferencia": "2026-06-04",
   "jogadores": [
-    "Impressão e Xerox",
+    "Zida",
     "",
-    "",
-    "",
+    "Erik",
+    "Patrick",
     "",
     "",
     "",
@@ -18,16 +18,19 @@
     ""
   ],
   "suplentes": [
-    "",
+    "Vitor",
     "",
     "",
     ""
   ],
   "inscricoes": {
-    "29017470156922@lid": {
-      "tipo": "jogador",
+    "avulso:vitor": {
+      "tipo": "suplente",
       "slot": 0,
-      "nome": "Impressão e Xerox"
+      "nome": "Vitor",
+      "avulso": true,
+      "adicionadoPor": "29017470156922@lid",
+      "adicionadoPorNome": "Impressão e Xerox"
     }
   }
 }

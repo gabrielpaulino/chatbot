@@ -23,6 +23,7 @@ Bot para **grupo de WhatsApp** que gerencia a lista de presença do futebol sema
 - **Avulsos** sempre na seção Suplentes
 - Inclusão de terceiros: `avulso Nome` (ex.: Erik adiciona Vitor)
 - Remoção de terceiros: `fora Nome`
+- **Importar lista colada**: lê a última `LISTA FUT` enviada no grupo e usa como base
 
 ## Comandos no grupo
 
@@ -34,6 +35,8 @@ Bot para **grupo de WhatsApp** que gerencia a lista de presença do futebol sema
 | `fora` | Remove sua própria inscrição |
 | `fora Vitor` | Remove **Vitor** da lista |
 | `lista` | Exibe a lista atual |
+| `importar` | Busca a última LISTA FUT nas mensagens recentes do grupo |
+| *(colar LISTA FUT)* | Atualiza a base automaticamente ao colar a lista no grupo |
 | `idgrupo` | Mostra o ID do grupo (para configurar o `.env`) |
 
 Sinônimos aceitos: `confirmar`, `sim`, `vou` (dentro); `cancelar`, `sair` (fora); `suplente` (avulso).
@@ -96,6 +99,28 @@ npm start
 | `npm run reset` | Remove sessão e cache (Windows) |
 | `npm run docker:up` | Sobe com Docker |
 | `npm run docker:logs` | Logs do container |
+
+## Lista colada (copiar e colar)
+
+Se alguém colar no grupo uma mensagem no formato da lista, o bot **importa os nomes** e passa a usar essa base nos comandos `dentro`, `fora` e `avulso`.
+
+Exemplo de formato reconhecido:
+
+```
+LISTA FUT 04/06
+
+1- Júlio
+2- Carlos
+...
+GOLEIROS
+1 - França
+2 - Reginaldo
+
+Suplentes
+1- Vitor (avulso)
+```
+
+Antes de cada comando, o bot também tenta sincronizar com a **última** LISTA FUT do histórico do grupo. Use `importar` para forçar a leitura.
 
 ## Exemplo de resposta
 
