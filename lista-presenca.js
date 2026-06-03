@@ -494,7 +494,7 @@ function desconfirmarPresenca(userId, nomeSolicitante, nomeAlvo = null) {
       salvarLista(dados);
       return {
         ok: true,
-        mensagem: `❌ ${nomeSolicitante} removeu ${alvo} da lista importada.`,
+        mensagem: `❌ ${nomeSolicitante} removeu ${alvo} da lista.`,
         listaFormatada: formatarLista(dados),
       };
     }
@@ -511,7 +511,7 @@ function desconfirmarPresenca(userId, nomeSolicitante, nomeAlvo = null) {
       salvarLista(dados);
       return {
         ok: true,
-        mensagem: `❌ ${nomeSolicitante}, presença cancelada na lista importada.`,
+        mensagem: `❌ ${nomeSolicitante}, presença cancelada na lista.`,
         listaFormatada: formatarLista(dados),
       };
     }
