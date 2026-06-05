@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const moment = require("moment-timezone");
 
 const ARQUIVO_LISTA = path.join(
   process.env.DATA_PATH || __dirname,
@@ -7,27 +8,25 @@ const ARQUIVO_LISTA = path.join(
 );
 const TOTAL_JOGADORES = 15;
 const TOTAL_SUPLENTES = 4;
+const FUSO_HORARIO = process.env.TZ || "America/Sao_Paulo";
 
 const GOLEIROS = ["França", "Reginaldo"];
 
+/** Quinta-feira 00:00 que iniciou o ciclo atual da lista (reset semanal). */
 function getQuintaDaSemana() {
-  const agora = new Date();
-  const dia = agora.getDay();
-  const diferenca = dia <= 4 ? 4 - dia : 4 - dia + 7;
-  const quinta = new Date(agora);
-  quinta.setHours(12, 0, 0, 0);
-  quinta.setDate(agora.getDate() + diferenca);
-  return quinta;
+  const agora = moment.tz(FUSO_HORARIO);
+  const dia = agora.day(); // 0=dom … 4=qui
+  const diasAtras = dia >= 4 ? dia - 4 : dia + 3;
+  return agora.clone().subtract(diasAtras, "days").startOf("day");
 }
 
 function getSemanaReferencia() {
-  return getQuintaDaSemana().toISOString().slice(0, 10);
+  return getQuintaDaSemana().format("YYYY-MM-DD");
 }
 
-function formatarDataQuinta(data) {
-  const dd = String(data.getDate()).padStart(2, "0");
-  const mm = String(data.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}`;
+function formatarDataQuinta(quinta) {
+  const m = moment.isMoment(quinta) ? quinta : moment(quinta);
+  return m.format("DD/MM");
 }
 
 function criarListaVazia() {
@@ -36,6 +35,8 @@ function criarListaVazia() {
     jogadores: Array(TOTAL_JOGADORES).fill(""),
     suplentes: Array(TOTAL_SUPLENTES).fill(""),
     inscricoes: {},
+    ultimaListaMsgId: null,
+    ultimaListaImportadaEm: null,
   };
 }
 
@@ -55,6 +56,8 @@ function carregarLista() {
         .fill("")
         .map((_, i) => dados.suplentes?.[i] || ""),
       inscricoes: dados.inscricoes || {},
+      ultimaListaMsgId: dados.ultimaListaMsgId || null,
+      ultimaListaImportadaEm: dados.ultimaListaImportadaEm || null,
     };
   } catch {
     return criarListaVazia();
@@ -71,6 +74,9 @@ function garantirSemanaAtual(dados) {
     const nova = criarListaVazia();
     Object.assign(dados, nova);
     salvarLista(dados);
+    console.log(
+      `🔄 Lista zerada — novo ciclo semanal (${formatarDataQuinta(getQuintaDaSemana())} 00:00 ${FUSO_HORARIO})`
+    );
   }
   return dados;
 }
@@ -122,6 +128,39 @@ function limparSlot(dados, insc) {
 function pareceListaFut(texto) {
   if (!texto || texto.length < 20) return false;
   return /lista\s*fut/i.test(texto) && /\d+\s*[-–]\s*.+/i.test(texto);
+}
+
+function extrairDataLista(texto) {
+  const match = texto.match(/lista\s*fut\s*(\d{1,2})\/(\d{1,2})/i);
+  if (!match) return null;
+
+  const dd = parseInt(match[1], 10);
+  const mm = parseInt(match[2], 10);
+  const anoRef = getQuintaDaSemana().year();
+
+  return moment.tz(
+    `${anoRef}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`,
+    "YYYY-MM-DD",
+    FUSO_HORARIO
+  );
+}
+
+function listaEhDaSemanaAtual(texto) {
+  const dataLista = extrairDataLista(texto);
+  if (!dataLista?.isValid()) return false;
+  return dataLista.format("DD/MM") === getQuintaDaSemana().format("DD/MM");
+}
+
+function mensagemEhDaSemanaAtual(msg) {
+  if (!msg?.timestamp) return false;
+  const enviadaEm = moment.unix(msg.timestamp).tz(FUSO_HORARIO);
+  return enviadaEm.isSameOrAfter(getQuintaDaSemana());
+}
+
+function podeImportarLista(texto, msg = null) {
+  if (!pareceListaFut(texto) || !listaEhDaSemanaAtual(texto)) return false;
+  if (msg && !mensagemEhDaSemanaAtual(msg)) return false;
+  return true;
 }
 
 function parsearListaDoTexto(texto) {
@@ -289,23 +328,31 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
   try {
     const chat = await client.getChatById(grupoId);
     const mensagens = await chat.fetchMessages({ limit: limite });
+    const quintaAtual = getQuintaDaSemana().format("DD/MM");
 
     for (let i = mensagens.length - 1; i >= 0; i--) {
       const m = mensagens[i];
       const corpo = m.body || "";
-      if (!pareceListaFut(corpo)) continue;
+      if (!podeImportarLista(corpo, m)) continue;
 
       const msgId = m.id?._serialized || m.id;
       const dados = garantirSemanaAtual(carregarLista());
       if (dados.ultimaListaMsgId === msgId) {
-        return { importado: false, dados };
+        return { importado: false, dados, jaSincronizada: true };
       }
 
       const resultado = importarListaDoTexto(corpo, msgId);
+      console.log(
+        `📋 Lista da semana ${quintaAtual} importada do histórico do grupo`
+      );
       return { importado: resultado.ok, dados: resultado.dados, resultado };
     }
 
-    return { importado: false, dados: carregarLista() };
+    return {
+      importado: false,
+      dados: garantirSemanaAtual(carregarLista()),
+      nenhumaListaSemana: true,
+    };
   } catch (err) {
     console.warn("⚠️ Falha ao sincronizar lista do grupo:", err.message);
     return { importado: false, dados: carregarLista() };
@@ -313,8 +360,7 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
 }
 
 function formatarLista(dados) {
-  const dataFut = formatarDataQuinta(getQuintaDaSemana());
-  const linhas = [`LISTA FUT ${dataFut}`, ""];
+  const linhas = [`LISTA FUT ${formatarDataQuinta(getQuintaDaSemana())}`, ""];
 
   for (let i = 0; i < TOTAL_JOGADORES; i++) {
     linhas.push(`${i + 1}- ${dados.jogadores[i] || ""}`.trimEnd());
@@ -494,7 +540,7 @@ function desconfirmarPresenca(userId, nomeSolicitante, nomeAlvo = null) {
       salvarLista(dados);
       return {
         ok: true,
-        mensagem: `❌ ${nomeSolicitante} removeu ${alvo} da lista.`,
+        mensagem: `❌ ${nomeSolicitante} removeu ${alvo} da lista importada.`,
         listaFormatada: formatarLista(dados),
       };
     }
@@ -511,7 +557,7 @@ function desconfirmarPresenca(userId, nomeSolicitante, nomeAlvo = null) {
       salvarLista(dados);
       return {
         ok: true,
-        mensagem: `❌ ${nomeSolicitante}, presença cancelada na lista.`,
+        mensagem: `❌ ${nomeSolicitante}, presença cancelada na lista importada.`,
         listaFormatada: formatarLista(dados),
       };
     }
@@ -545,6 +591,7 @@ module.exports = {
   garantirSemanaAtual,
   getQuintaDaSemana,
   pareceListaFut,
+  podeImportarLista,
   importarListaDoTexto,
   sincronizarUltimaListaDoGrupo,
 };

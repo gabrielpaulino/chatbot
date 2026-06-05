@@ -14,6 +14,7 @@ const {
   carregarLista,
   garantirSemanaAtual,
   pareceListaFut,
+  podeImportarLista,
   importarListaDoTexto,
   sincronizarUltimaListaDoGrupo,
 } = require("./lista-presenca");
@@ -240,7 +241,7 @@ function analisarMensagem(texto) {
   const palavra = partes[0].toLowerCase();
   const resto = partes.slice(1).join(" ").trim() || null;
 
-  if (/^(dentro|confirmar|confirmo|confirmado)$/i.test(palavra)) {
+  if (/^(dentro|confirmar|confirmo)$/i.test(palavra)) {
     return { comando: "dentro", nomeAlvo: null };
   }
   if (/^(fora|desconfirmar|cancelar|sair|)$/i.test(palavra)) {
@@ -288,10 +289,17 @@ client.on("message", (msg) => {
     const ehGrupo = msg.from.endsWith("@g.us");
     const noGrupoAtivo = ehGrupo && GRUPO_ID && ehGrupoPermitido(msg);
 
-    // Lista colada no grupo (qualquer pessoa, inclusive o próprio bot)
+    // Lista colada no grupo — só da semana atual (quinta 00:00 em diante)
     if (noGrupoAtivo && pareceListaFut(texto) && !analisarMensagem(texto)) {
+      if (!podeImportarLista(texto, msg)) {
+        if (DEBUG) {
+          console.log("[debug] Lista ignorada (semana antiga ou data diferente)");
+        }
+        return;
+      }
+
       const msgId = msg.id?._serialized || msg.id;
-      const dadosAtual = carregarLista();
+      const dadosAtual = garantirSemanaAtual(carregarLista());
       if (dadosAtual.ultimaListaMsgId !== msgId) {
         const resultado = importarListaDoTexto(texto, msgId);
         console.log(
@@ -362,22 +370,22 @@ client.on("message", (msg) => {
 
     const nome = await obterNomeUsuario(msg, userId);
 
-    // Antes de alterar: usa a última LISTA FUT enviada no grupo
-    await sincronizarUltimaListaDoGrupo(client, GRUPO_ID);
-
     let resposta;
 
     if (comando === "importar") {
       const sync = await sincronizarUltimaListaDoGrupo(client, GRUPO_ID, 100);
       if (sync.importado && sync.resultado) {
         resposta = `${sync.resultado.mensagem}\n\n${sync.resultado.listaFormatada}`;
-      } else if (sync.resultado && !sync.importado) {
+      } else if (sync.jaSincronizada) {
         const dados = garantirSemanaAtual(carregarLista());
-        resposta = `ℹ️ Lista do grupo já estava sincronizada.\n\n${formatarLista(dados)}`;
+        resposta = `ℹ️ Lista desta semana já estava sincronizada.\n\n${formatarLista(dados)}`;
       } else {
+        const quinta = formatarLista(garantirSemanaAtual(carregarLista())).split("\n")[0];
         resposta =
-          "⚠️ Nenhuma LISTA FUT encontrada nas últimas mensagens do grupo.\n" +
-          "Cole a lista no chat ou envie no formato:\nLISTA FUT 04/06\n1- Nome\n...";
+          `⚠️ Nenhuma LISTA FUT *desta semana* no histórico do grupo.\n` +
+          `Procuro listas com cabeçalho igual a: ${quinta}\n` +
+          `enviadas após quinta-feira 00:00.\n\n` +
+          `Use *dentro* para começar lista vazia ou cole a lista atualizada no grupo.`;
       }
     } else if (comando === "dentro") {
       const resultado = confirmarPresenca(userId, nome);

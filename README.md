@@ -19,7 +19,7 @@ Bot para **grupo de WhatsApp** que gerencia a lista de presença do futebol sema
 
 - Respostas **apenas no grupo** configurado em `GRUPO_ID`
 - Lista com **15 titulares**, **4 suplentes** e goleiros fixos (França, Reginaldo)
-- Reset automático da lista a cada **nova semana** (referência: próxima quinta-feira)
+- Reset automático da lista toda **quinta-feira às 00:00** (fuso `America/Sao_Paulo`)
 - **Avulsos** sempre na seção Suplentes
 - Inclusão de terceiros: `avulso Nome` (ex.: Erik adiciona Vitor)
 - Remoção de terceiros: `fora Nome`
@@ -120,7 +120,7 @@ Suplentes
 1- Vitor (avulso)
 ```
 
-Antes de cada comando, o bot também tenta sincronizar com a **última** LISTA FUT do histórico do grupo. Use `importar` para forçar a leitura.
+Listas **antigas** (semana passada ou data diferente no cabeçalho) são **ignoradas**. Comandos `dentro`/`fora`/`avulso` usam a lista local da semana atual — se vazia, o primeiro `dentro` entra na posição 1. Use `importar` só se quiser puxar uma LISTA FUT **desta semana** do histórico do grupo.
 
 ## Exemplo de resposta
 
