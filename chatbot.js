@@ -289,14 +289,9 @@ client.on("message", (msg) => {
     const ehGrupo = msg.from.endsWith("@g.us");
     const noGrupoAtivo = ehGrupo && GRUPO_ID && ehGrupoPermitido(msg);
 
-    // Lista colada no grupo — só da semana atual (quinta 00:00 em diante)
+    // Lista colada — só se for da data exibida atual e do ciclo desta semana
     if (noGrupoAtivo && pareceListaFut(texto) && !analisarMensagem(texto)) {
-      if (!podeImportarLista(texto, msg)) {
-        if (DEBUG) {
-          console.log("[debug] Lista ignorada (semana antiga ou data diferente)");
-        }
-        return;
-      }
+      if (!podeImportarLista(texto, msg)) return;
 
       const msgId = msg.id?._serialized || msg.id;
       const dadosAtual = garantirSemanaAtual(carregarLista());
@@ -378,13 +373,12 @@ client.on("message", (msg) => {
         resposta = `${sync.resultado.mensagem}\n\n${sync.resultado.listaFormatada}`;
       } else if (sync.jaSincronizada) {
         const dados = garantirSemanaAtual(carregarLista());
-        resposta = `ℹ️ Lista desta semana já estava sincronizada.\n\n${formatarLista(dados)}`;
+        resposta = `ℹ️ Lista já estava sincronizada.\n\n${formatarLista(dados)}`;
       } else {
-        const quinta = formatarLista(garantirSemanaAtual(carregarLista())).split("\n")[0];
+        const dados = garantirSemanaAtual(carregarLista());
+        const cabecalho = formatarLista(dados).split("\n")[0];
         resposta =
-          `⚠️ Nenhuma LISTA FUT *desta semana* no histórico do grupo.\n` +
-          `Procuro listas com cabeçalho igual a: ${quinta}\n` +
-          `enviadas após quinta-feira 00:00.\n\n` +
+          `⚠️ Nenhuma ${cabecalho} encontrada no histórico desta semana.\n` +
           `Use *dentro* para começar lista vazia ou cole a lista atualizada no grupo.`;
       }
     } else if (comando === "dentro") {
