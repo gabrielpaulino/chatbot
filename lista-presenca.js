@@ -12,21 +12,33 @@ const FUSO_HORARIO = process.env.TZ || "America/Sao_Paulo";
 
 const GOLEIROS = ["França", "Reginaldo"];
 
-/** Quinta-feira 00:00 que iniciou o ciclo atual da lista (reset semanal). */
+/** Data exibida em LISTA FUT — próxima quinta-feira do calendário. */
 function getQuintaDaSemana() {
+  const agora = new Date();
+  const dia = agora.getDay();
+  const diferenca = dia <= 4 ? 4 - dia : 4 - dia + 7;
+  const quinta = new Date(agora);
+  quinta.setHours(12, 0, 0, 0);
+  quinta.setDate(agora.getDate() + diferenca);
+  return quinta;
+}
+
+/** Quinta-feira 00:00 que iniciou o ciclo — usado só para reset semanal. */
+function getInicioCiclo() {
   const agora = moment.tz(FUSO_HORARIO);
-  const dia = agora.day(); // 0=dom … 4=qui
+  const dia = agora.day();
   const diasAtras = dia >= 4 ? dia - 4 : dia + 3;
   return agora.clone().subtract(diasAtras, "days").startOf("day");
 }
 
 function getSemanaReferencia() {
-  return getQuintaDaSemana().format("YYYY-MM-DD");
+  return getInicioCiclo().format("YYYY-MM-DD");
 }
 
-function formatarDataQuinta(quinta) {
-  const m = moment.isMoment(quinta) ? quinta : moment(quinta);
-  return m.format("DD/MM");
+function formatarDataQuinta(data) {
+  const dd = String(data.getDate()).padStart(2, "0");
+  const mm = String(data.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
 }
 
 function criarListaVazia() {
@@ -75,7 +87,7 @@ function garantirSemanaAtual(dados) {
     Object.assign(dados, nova);
     salvarLista(dados);
     console.log(
-      `🔄 Lista zerada — novo ciclo semanal (${formatarDataQuinta(getQuintaDaSemana())} 00:00 ${FUSO_HORARIO})`
+      `🔄 Lista zerada — quinta ${getInicioCiclo().format("DD/MM")} 00:00 (${FUSO_HORARIO})`
     );
   }
   return dados;
@@ -136,7 +148,7 @@ function extrairDataLista(texto) {
 
   const dd = parseInt(match[1], 10);
   const mm = parseInt(match[2], 10);
-  const anoRef = getQuintaDaSemana().year();
+  const anoRef = getQuintaDaSemana().getFullYear();
 
   return moment.tz(
     `${anoRef}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`,
@@ -145,16 +157,20 @@ function extrairDataLista(texto) {
   );
 }
 
+function dataExibidaLista() {
+  return formatarDataQuinta(getQuintaDaSemana());
+}
+
 function listaEhDaSemanaAtual(texto) {
   const dataLista = extrairDataLista(texto);
   if (!dataLista?.isValid()) return false;
-  return dataLista.format("DD/MM") === getQuintaDaSemana().format("DD/MM");
+  return dataLista.format("DD/MM") === dataExibidaLista();
 }
 
 function mensagemEhDaSemanaAtual(msg) {
   if (!msg?.timestamp) return false;
   const enviadaEm = moment.unix(msg.timestamp).tz(FUSO_HORARIO);
-  return enviadaEm.isSameOrAfter(getQuintaDaSemana());
+  return enviadaEm.isSameOrAfter(getInicioCiclo());
 }
 
 function podeImportarLista(texto, msg = null) {
@@ -328,7 +344,6 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
   try {
     const chat = await client.getChatById(grupoId);
     const mensagens = await chat.fetchMessages({ limit: limite });
-    const quintaAtual = getQuintaDaSemana().format("DD/MM");
 
     for (let i = mensagens.length - 1; i >= 0; i--) {
       const m = mensagens[i];
@@ -342,9 +357,6 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
       }
 
       const resultado = importarListaDoTexto(corpo, msgId);
-      console.log(
-        `📋 Lista da semana ${quintaAtual} importada do histórico do grupo`
-      );
       return { importado: resultado.ok, dados: resultado.dados, resultado };
     }
 
@@ -360,7 +372,8 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
 }
 
 function formatarLista(dados) {
-  const linhas = [`LISTA FUT ${formatarDataQuinta(getQuintaDaSemana())}`, ""];
+  const dataFut = formatarDataQuinta(getQuintaDaSemana());
+  const linhas = [`LISTA FUT ${dataFut}`, ""];
 
   for (let i = 0; i < TOTAL_JOGADORES; i++) {
     linhas.push(`${i + 1}- ${dados.jogadores[i] || ""}`.trimEnd());
@@ -590,6 +603,7 @@ module.exports = {
   carregarLista,
   garantirSemanaAtual,
   getQuintaDaSemana,
+  getInicioCiclo,
   pareceListaFut,
   podeImportarLista,
   importarListaDoTexto,
