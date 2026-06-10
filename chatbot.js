@@ -88,7 +88,7 @@ client.on("ready", async () => {
   garantirSemanaAtual(carregarLista());
   console.log("✅ Tudo certo! WhatsApp conectado.");
   console.log(
-    "📋 Comandos: dentro | avulso | fora | lista | importar | (colar LISTA FUT)"
+    "📋 Comandos: confirmado | avulso | fora | lista | importar | (colar LISTA FUT)"
   );
 
   if (!GRUPO_ID) {
