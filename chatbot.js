@@ -241,10 +241,10 @@ function analisarMensagem(texto) {
   const palavra = partes[0].toLowerCase();
   const resto = partes.slice(1).join(" ").trim() || null;
 
-  if (/^(dentro|confirmar|confirmo)$/i.test(palavra)) {
+  if (/^(confirmado|confirmar|confirmo)$/i.test(palavra)) {
     return { comando: "dentro", nomeAlvo: null };
   }
-  if (/^(fora|desconfirmar|cancelar|sair|)$/i.test(palavra)) {
+  if (/^(fora|desconfirmar|)$/i.test(palavra)) {
     return { comando: "fora", nomeAlvo: resto };
   }
   if (/^(lista|listar)$/i.test(lower)) {
