@@ -375,18 +375,18 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
 
 function formatarLista(dados) {
   const dataFut = formatarDataQuinta(getQuintaDaSemana());
-  const linhas = [`LISTA FUT ${dataFut}`, ""];
+  const linhas = [`*LISTA FUT ${dataFut}*`, ""];
 
   for (let i = 0; i < TOTAL_JOGADORES; i++) {
     linhas.push(`${i + 1}- ${dados.jogadores[i] || ""}`.trimEnd());
   }
 
-  linhas.push("", "GOLEIROS", "");
+  linhas.push("", "*GOLEIROS*", "");
   GOLEIROS.forEach((nome, i) => {
     linhas.push(`${i + 1} - ${nome}`);
   });
 
-  linhas.push("", "Suplentes", "");
+  linhas.push("", "*Suplentes*", "");
   for (let i = 0; i < TOTAL_SUPLENTES; i++) {
     const nome = dados.suplentes[i] || "";
     const ehAvulso = Object.values(dados.inscricoes).some(
@@ -396,7 +396,7 @@ function formatarLista(dados) {
     linhas.push(`${i + 1}- ${nome}${sufixo}`.trimEnd());
   }
 
-  linhas.push("", "CHURRAS 20,00", "");
+  linhas.push("", "*CHURRAS 20,00*", "");
   const churras = Object.values(dados.churrasInscricoes || {}).filter(Boolean);
   if (churras.length === 0) {
     linhas.push("1-");
