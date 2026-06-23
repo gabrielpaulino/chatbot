@@ -10,6 +10,8 @@ const {
   confirmarPresenca,
   confirmarAvulso,
   desconfirmarPresenca,
+  confirmarChurras,
+  desconfirmarChurras,
   formatarLista,
   carregarLista,
   garantirSemanaAtual,
@@ -88,7 +90,7 @@ client.on("ready", async () => {
   garantirSemanaAtual(carregarLista());
   console.log("✅ Tudo certo! WhatsApp conectado.");
   console.log(
-    "📋 Comandos: confirmado | avulso | fora | lista | importar | (colar LISTA FUT)"
+    "📋 Comandos: confirmado | avulso | fora | churras | lista | importar | (colar LISTA FUT)"
   );
 
   if (!GRUPO_ID) {
@@ -259,6 +261,9 @@ function analisarMensagem(texto) {
   if (/^(importar|sync|sincronizar)$/i.test(palavra)) {
     return { comando: "importar", nomeAlvo: null };
   }
+  if (/^(churras|churrasco)$/i.test(palavra)) {
+    return { comando: "churras", nomeAlvo: null };
+  }
 
   return null;
 }
@@ -388,7 +393,15 @@ client.on("message", (msg) => {
       const resultado = confirmarAvulso(userId, nome, nomeAlvo);
       resposta = `${resultado.mensagem}\n\n${resultado.listaFormatada}`;
     } else if (comando === "fora") {
-      const resultado = desconfirmarPresenca(userId, nome, nomeAlvo);
+      if (nomeAlvo && /^churras(co)?$/i.test(nomeAlvo.trim())) {
+        const resultado = desconfirmarChurras(userId, nome);
+        resposta = `${resultado.mensagem}\n\n${resultado.listaFormatada}`;
+      } else {
+        const resultado = desconfirmarPresenca(userId, nome, nomeAlvo);
+        resposta = `${resultado.mensagem}\n\n${resultado.listaFormatada}`;
+      }
+    } else if (comando === "churras") {
+      const resultado = confirmarChurras(userId, nome);
       resposta = `${resultado.mensagem}\n\n${resultado.listaFormatada}`;
     } else if (comando === "lista") {
       const dados = garantirSemanaAtual(carregarLista());
