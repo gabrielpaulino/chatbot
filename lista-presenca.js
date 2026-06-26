@@ -47,7 +47,6 @@ function criarListaVazia() {
     jogadores: Array(TOTAL_JOGADORES).fill(""),
     suplentes: Array(TOTAL_SUPLENTES).fill(""),
     inscricoes: {},
-    churrasInscricoes: {},
     ultimaListaMsgId: null,
     ultimaListaImportadaEm: null,
   };
@@ -69,7 +68,6 @@ function carregarLista() {
         .fill("")
         .map((_, i) => dados.suplentes?.[i] || ""),
       inscricoes: dados.inscricoes || {},
-      churrasInscricoes: dados.churrasInscricoes || {},
       ultimaListaMsgId: dados.ultimaListaMsgId || null,
       ultimaListaImportadaEm: dados.ultimaListaImportadaEm || null,
     };
@@ -396,16 +394,6 @@ function formatarLista(dados) {
     linhas.push(`${i + 1}- ${nome}${sufixo}`.trimEnd());
   }
 
-  linhas.push("", "*CHURRAS 20,00*", "");
-  const churras = Object.values(dados.churrasInscricoes || {}).filter(Boolean);
-  if (churras.length === 0) {
-    linhas.push("1-");
-  } else {
-    churras.forEach((nome, i) => {
-      linhas.push(`${i + 1}- ${nome}`);
-    });
-  }
-
   return linhas.join("\n");
 }
 
@@ -607,65 +595,10 @@ function desconfirmarPresenca(userId, nomeSolicitante, nomeAlvo = null) {
   };
 }
 
-function confirmarChurras(userId, nome) {
-  const dados = garantirSemanaAtual(carregarLista());
-  if (!dados.churrasInscricoes) dados.churrasInscricoes = {};
-
-  if (dados.churrasInscricoes[userId]) {
-    return {
-      ok: false,
-      mensagem: `ℹ️ ${nome}, você já confirmou presença no churras!`,
-      listaFormatada: formatarLista(dados),
-    };
-  }
-
-  const jaTemNome = Object.values(dados.churrasInscricoes).some(
-    (n) => normalizarNomeBusca(n) === normalizarNomeBusca(nome)
-  );
-  if (jaTemNome) {
-    return {
-      ok: false,
-      mensagem: `ℹ️ ${nome} já está na lista do churras.`,
-      listaFormatada: formatarLista(dados),
-    };
-  }
-
-  dados.churrasInscricoes[userId] = nome;
-  salvarLista(dados);
-
-  return {
-    ok: true,
-    mensagem: `✅ ${nome}, presença confirmada no churras (R$ 20,00)!`,
-    listaFormatada: formatarLista(dados),
-  };
-}
-
-function desconfirmarChurras(userId, nomeSolicitante) {
-  const dados = garantirSemanaAtual(carregarLista());
-  if (!dados.churrasInscricoes?.[userId]) {
-    return {
-      ok: false,
-      mensagem: `ℹ️ ${nomeSolicitante}, você não confirmou presença no churras.`,
-      listaFormatada: formatarLista(dados),
-    };
-  }
-
-  delete dados.churrasInscricoes[userId];
-  salvarLista(dados);
-
-  return {
-    ok: true,
-    mensagem: `❌ ${nomeSolicitante}, presença cancelada no churras.`,
-    listaFormatada: formatarLista(dados),
-  };
-}
-
 module.exports = {
   confirmarPresenca,
   confirmarAvulso,
   desconfirmarPresenca,
-  confirmarChurras,
-  desconfirmarChurras,
   formatarLista,
   carregarLista,
   garantirSemanaAtual,
