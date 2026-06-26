@@ -12,30 +12,37 @@ const FUSO_HORARIO = process.env.TZ || "America/Sao_Paulo";
 
 const GOLEIROS = ["França", "Reginaldo"];
 
-/** Data exibida em LISTA FUT — próxima quinta-feira do calendário. */
-function getQuintaDaSemana() {
-  const agora = new Date();
-  const dia = agora.getDay();
-  const diferenca = dia <= 4 ? 4 - dia : 4 - dia + 7;
-  const quinta = new Date(agora);
-  quinta.setHours(12, 0, 0, 0);
-  quinta.setDate(agora.getDate() + diferenca);
-  return quinta;
+/** Quinta-feira alvo da lista (data do jogo exibida em LISTA FUT). */
+function getQuintaAlvo() {
+  const agora = moment.tz(FUSO_HORARIO);
+  const dia = agora.day(); // 0=dom … 4=qui … 6=sáb
+
+  if (dia === 4) {
+    return agora.clone().startOf("day");
+  }
+
+  const diasAte = (4 - dia + 7) % 7;
+  return agora.clone().add(diasAte, "days").startOf("day");
 }
 
-/** Quinta-feira 00:00 que iniciou o ciclo — usado só para reset semanal. */
+/** Compatível com código que espera Date nativo. */
+function getQuintaDaSemana() {
+  return getQuintaAlvo().toDate();
+}
+
+/** Início do ciclo — sexta 00:00 após a quinta anterior (fim do jogo). */
 function getInicioCiclo() {
-  const agora = moment.tz(FUSO_HORARIO);
-  const dia = agora.day();
-  const diasAtras = dia >= 4 ? dia - 4 : dia + 3;
-  return agora.clone().subtract(diasAtras, "days").startOf("day");
+  return getQuintaAlvo().clone().subtract(6, "days").startOf("day");
 }
 
 function getSemanaReferencia() {
-  return getInicioCiclo().format("YYYY-MM-DD");
+  return getQuintaAlvo().format("YYYY-MM-DD");
 }
 
 function formatarDataQuinta(data) {
+  if (moment.isMoment(data)) {
+    return data.format("DD/MM");
+  }
   const dd = String(data.getDate()).padStart(2, "0");
   const mm = String(data.getMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}`;
@@ -87,7 +94,7 @@ function garantirSemanaAtual(dados) {
     Object.assign(dados, nova);
     salvarLista(dados);
     console.log(
-      `🔄 Lista zerada — quinta ${getInicioCiclo().format("DD/MM")} 00:00 (${FUSO_HORARIO})`
+      `🔄 Lista zerada — novo ciclo para quinta ${getQuintaAlvo().format("DD/MM")} (${FUSO_HORARIO})`
     );
   }
   return dados;
@@ -148,7 +155,7 @@ function extrairDataLista(texto) {
 
   const dd = parseInt(match[1], 10);
   const mm = parseInt(match[2], 10);
-  const anoRef = getQuintaDaSemana().getFullYear();
+  const anoRef = getQuintaAlvo().year();
 
   return moment.tz(
     `${anoRef}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`,
@@ -158,7 +165,7 @@ function extrairDataLista(texto) {
 }
 
 function dataExibidaLista() {
-  return formatarDataQuinta(getQuintaDaSemana());
+  return formatarDataQuinta(getQuintaAlvo());
 }
 
 function listaEhDaSemanaAtual(texto) {
@@ -372,7 +379,7 @@ async function sincronizarUltimaListaDoGrupo(client, grupoId, limite = 60) {
 }
 
 function formatarLista(dados) {
-  const dataFut = formatarDataQuinta(getQuintaDaSemana());
+  const dataFut = formatarDataQuinta(getQuintaAlvo());
   const linhas = [`*LISTA FUT ${dataFut}*`, ""];
 
   for (let i = 0; i < TOTAL_JOGADORES; i++) {
