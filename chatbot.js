@@ -253,6 +253,10 @@ function analisarMensagem(texto) {
   if (/^(avulso|suplente)$/i.test(palavra)) {
     return { comando: "avulso", nomeAlvo: resto };
   }
+  const matchNomeAvulso = bruto.replace(/[!.,?…]+$/g, "").trim().match(/^(.+?)\s+(avulso|suplente)$/i);
+  if (matchNomeAvulso?.[1]?.trim()) {
+    return { comando: "avulso", nomeAlvo: matchNomeAvulso[1].trim() };
+  }
   if (/^(idgrupo)$/i.test(palavra) || lower === "id do grupo") {
     return { comando: "idgrupo", nomeAlvo: null };
   }

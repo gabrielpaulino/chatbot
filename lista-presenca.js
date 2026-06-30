@@ -457,7 +457,7 @@ function confirmarPresenca(userId, nome) {
     ok: false,
     mensagem:
       `❌ Lista de titulares lotada.\n` +
-      `${nome}, use *avulso* para entrar como suplente ou *avulso Nome* para incluir alguém.`,
+      `${nome}, use *avulso* para entrar como suplente ou *avulso Nome* / *Nome avulso* para incluir alguém.`,
     listaFormatada: formatarLista(dados),
   };
 }
